@@ -1,1 +1,6 @@
 /tmp
+
+# go air config file
+.air.toml
+
+.vscode
