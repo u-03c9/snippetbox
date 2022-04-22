@@ -7,6 +7,11 @@ import (
 	"os"
 )
 
+type application struct {
+	errorLog *log.Logger
+	infoLog  *log.Logger
+}
+
 func getAddress() string {
 	host, exist := os.LookupEnv("HOST")
 	if !exist {
@@ -21,16 +26,29 @@ func getAddress() string {
 }
 
 func main() {
+	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
+	errorLog := log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+
+	app := &application{
+		errorLog: errorLog,
+		infoLog:  infoLog,
+	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", home)
-	mux.HandleFunc("/snippet", showSnippet)
-	mux.HandleFunc("/snippet/create", createSnippet)
+	mux.HandleFunc("/", app.home)
+	mux.HandleFunc("/snippet", app.showSnippet)
+	mux.HandleFunc("/snippet/create", app.createSnippet)
 
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
-	address := getAddress()
-	log.Printf("Starting server on %s", address)
-	err := http.ListenAndServe(address, mux)
-	log.Fatal(err)
+	server := &http.Server{
+		Addr:     getAddress(),
+		ErrorLog: errorLog,
+		Handler:  mux,
+	}
+
+	infoLog.Printf("Starting server on %s", server.Addr)
+	err := server.ListenAndServe()
+	errorLog.Fatal(err)
 }
